@@ -14,7 +14,7 @@ import { AdminGuard } from './guards/admin.guard';
 import { AdminStatsComponent } from './components/admin/admin-stats.component';
 import { UserListComponent } from './components/admin/user-list.component';
 
-const routes: Routes = [
+export const routes: Routes = [
   { path: '', component: BlogListComponent },
   { path: 'latest', component: BlogListComponent },
   { path: 'login', component: LoginComponent },

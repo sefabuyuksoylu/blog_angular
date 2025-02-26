@@ -114,14 +114,14 @@ import { CommonModule } from '@angular/common';
 
       .delete-btn {
         padding: 0.5rem 1rem;
-        background: #ff4444;
-        color: white;
+        background: #e2e2e2;
+        color: #4a4a4a;
         border: none;
         border-radius: 4px;
         cursor: pointer;
 
         &:hover {
-          background: darken(#ff4444, 10%);
+          background: #d1d1d1;
         }
       }
     }

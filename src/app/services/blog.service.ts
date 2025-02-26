@@ -3,12 +3,16 @@ import { SupabaseService } from './supabase.service';
 import { Blog, Category } from '../models/blog.model';
 import { Observable, from } from 'rxjs';
 import { environment } from '../../environments/environment';
+import { AuthService } from './auth.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class BlogService {
-  constructor(private supabase: SupabaseService) {}
+  constructor(
+    private supabase: SupabaseService,
+    private auth: AuthService
+  ) {}
 
   async createBlog(blog: Partial<Blog>, image?: File) {
     try {
@@ -18,17 +22,46 @@ export class BlogService {
         imageUrl = await this.uploadImage(image);
       }
 
+      // Kullanıcı bilgilerini al
+      const user = await this.auth.getCurrentUser();
+      if (!user) throw new Error('Kullanıcı girişi gerekli');
+
+      // Profil bilgilerini kontrol et
+      const { data: profile } = await this.supabase.client
+        .from('profiles')
+        .select('avatar_url')
+        .eq('id', user.id)
+        .single();
+
+      // Eğer profil resmi yoksa varsayılan avatar ekle
+      if (!profile?.avatar_url) {
+        const defaultAvatar = '/assets/images/varsayılanprofilresmi.png';
+
+        await this.supabase.client
+          .from('profiles')
+          .update({ avatar_url: defaultAvatar })
+          .eq('id', user.id);
+      }
+
       const { data, error } = await this.supabase.client
         .from('blogs')
         .insert({
           ...blog,
           image: imageUrl,
-          views_count: 0
+          views_count: 0,
+          created_at: new Date().toISOString(),
+          author_id: user.id
         })
         .select()
         .single();
 
       if (error) throw error;
+
+      // Blog sayısını güncelle
+      if (blog.category_id) {
+        await this.updateCategoryBlogCount(blog.category_id);
+      }
+
       return data;
     } catch (error) {
       console.error('Blog oluşturma hatası:', error);
@@ -84,13 +117,32 @@ export class BlogService {
   }
 
   async addToReadingHistory(userId: string, blogId: string) {
-    return await this.supabase.client
-      .from('reading_history')
-      .upsert({
-        user_id: userId,
-        blog_id: blogId,
-        read_at: new Date().toISOString()
-      });
+    try {
+      const { data, error } = await this.supabase.client
+        .from('reading_history')
+        .upsert({
+          user_id: userId,
+          blog_id: blogId,
+          read_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id,blog_id'
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Okuma geçmişi ekleme hatası:', error);
+        return { data: null, error };
+      }
+
+      // Blog görüntülenme sayısını artır
+      await this.incrementViews(blogId);
+
+      return { data, error: null };
+    } catch (error) {
+      console.error('Okuma geçmişi ekleme hatası:', error);
+      return { data: null, error };
+    }
   }
 
   async getCategories() {
@@ -101,23 +153,48 @@ export class BlogService {
   }
 
   async createCategory(category: Partial<Category>) {
-    const { data: userRole } = await this.supabase.client
-      .from('profiles')
-      .select('role')
-      .eq('id', category.id)
-      .single();
+    try {
+      console.log('Kategori ekleniyor:', category); // Debug için
 
-    if (!userRole) {
-      throw new Error('User not found');
-    }
+      // Önce RLS politikalarını kontrol edelim
+      const user = await this.supabase.client.auth.getUser();
+      if (!user) {
+        return { data: null, error: new Error('Oturum açmanız gerekiyor') };
+      }
 
-    if (userRole.role === 'admin') {
-      return await this.supabase.client
+      // Kategori eklemeyi deneyelim
+      const { data, error } = await this.supabase.client
         .from('categories')
-        .insert(category)
+        .insert({
+          name: category.name,
+          slug: category.slug,
+          created_at: new Date().toISOString()
+        })
+        .select('*')
         .single();
-    } else {
-      throw new Error('Only admins can create categories');
+
+      if (error) {
+        // Supabase hata detaylarını yazdıralım
+        console.error('Supabase detaylı hata:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
+        return { 
+          data: null, 
+          error: new Error(error.message || 'Kategori eklenirken bir hata oluştu') 
+        };
+      }
+
+      console.log('Eklenen kategori:', data);
+      return { data, error: null };
+    } catch (error: any) {
+      console.error('Kategori oluşturma hatası:', error);
+      return { 
+        data: null, 
+        error: new Error(error?.message || 'Beklenmeyen bir hata oluştu') 
+      };
     }
   }
 
@@ -160,23 +237,26 @@ export class BlogService {
   }
 
   async getUserReadPosts(userId: string) {
-    return await this.supabase.client
-      .from('reading_history')
-      .select(`
-        blog_id,
-        read_at,
-        blogs:blog_id (
-          id,
-          title,
-          content,
-          image,
-          views_count,
-          created_at,
-          author:author_id (*)
-        )
-      `)
-      .eq('user_id', userId)
-      .order('read_at', { ascending: false });
+    try {
+      const { data, error } = await this.supabase.client
+        .from('reading_history')
+        .select(`
+          *,
+          blogs:blog_id (
+            *,
+            categories (*),
+            profiles:author_id (*)
+          )
+        `)
+        .eq('user_id', userId)
+        .order('read_at', { ascending: false });
+
+      if (error) throw error;
+      return { data, error: null };
+    } catch (error) {
+      console.error('Okuma geçmişi alma hatası:', error);
+      return { data: null, error };
+    }
   }
 
   async deleteBlog(id: string) {
@@ -188,23 +268,39 @@ export class BlogService {
 
   async uploadImage(file: File): Promise<string> {
     try {
-      const fileName = `${Date.now()}_${file.name}`;
-      const { data, error } = await this.supabase.client
+      // Dosya boyutunu kontrol et
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        throw new Error('Dosya boyutu 5MB\'dan küçük olmalıdır');
+      }
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+
+      // Resmi yükle
+      const { error: uploadError } = await this.supabase.client
         .storage
         .from('blog-images')
-        .upload(fileName, file);
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
 
-      if (error) throw error;
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        throw uploadError;
+      }
 
+      // Public URL al
       const { data: { publicUrl } } = this.supabase.client
         .storage
         .from('blog-images')
-        .getPublicUrl(data.path);
+        .getPublicUrl(fileName);
 
+      console.log('Uploaded image URL:', publicUrl);
       return publicUrl;
     } catch (error) {
       console.error('Resim yükleme hatası:', error);
-      throw error;
+      throw new Error('Resim yüklenirken bir hata oluştu');
     }
   }
 
@@ -248,5 +344,58 @@ export class BlogService {
         blogs:blogs(count),
         total_views:blogs(sum(views_count))
       `);
+  }
+
+  async updateCategoryBlogCount(categoryId: string) {
+    try {
+      // Kategorideki blog sayısını hesapla
+      const { count } = await this.supabase.client
+        .from('blogs')
+        .select('*', { count: 'exact' })
+        .eq('category_id', categoryId);
+
+      // Kategoriyi güncelle
+      await this.supabase.client
+        .from('categories')
+        .update({ blog_count: count })
+        .eq('id', categoryId);
+    } catch (error) {
+      console.error('Blog sayısı güncelleme hatası:', error);
+    }
+  }
+
+  async getBlogStats() {
+    try {
+      // En çok okunan blogları al
+      const { data: topBlogs } = await this.supabase.client
+        .from('blogs')
+        .select(`
+          *,
+          categories (*),
+          profiles:author_id (*),
+          reading_count:reading_history(count)
+        `)
+        .order('views_count', { ascending: false })
+        .limit(5);
+
+      // Toplam blog sayısı
+      const { count: totalBlogs } = await this.supabase.client
+        .from('blogs')
+        .select('*', { count: 'exact', head: true });
+
+      // Toplam okuma sayısı
+      const { count: totalReads } = await this.supabase.client
+        .from('reading_history')
+        .select('*', { count: 'exact', head: true });
+
+      return {
+        topBlogs: topBlogs || [],
+        totalBlogs: totalBlogs || 0,
+        totalReads: totalReads || 0
+      };
+    } catch (error) {
+      console.error('İstatistik alma hatası:', error);
+      throw error;
+    }
   }
 } 

@@ -226,13 +226,18 @@ export class AuthService {
   }
 
   async getAllUsers() {
-    return await this.supabase.client
-      .from('profiles')
-      .select(`
-        *,
-        blogs:blogs(count)
-      `)
-      .order('created_at', { ascending: false });
+    try {
+      const { data, error } = await this.supabase.client
+        .from('user_stats')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return { data, error: null };
+    } catch (error) {
+      console.error('Kullanıcı listesi alma hatası:', error);
+      return { data: null, error };
+    }
   }
 
   async updateUserRole(userId: string, role: string) {
@@ -247,5 +252,13 @@ export class AuthService {
       .from('profiles')
       .delete()
       .eq('id', userId);
+  }
+
+  async getProfile(userId: string) {
+    return await this.supabase.client
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
   }
 } 

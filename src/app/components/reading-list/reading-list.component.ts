@@ -73,14 +73,14 @@ import { CommonModule } from '@angular/common';
         button {
           width: 100%;
           padding: 0.8rem;
-          background: #ff1a75;
-          color: white;
+          background: #e2e2e2;
+          color: #4a4a4a;
           border: none;
           border-radius: 8px;
           cursor: pointer;
 
           &:hover {
-            background: darken(#ff1a75, 10%);
+            background: #d1d1d1;
           }
         }
       }
@@ -91,15 +91,10 @@ import { CommonModule } from '@angular/common';
 })
 export class ReadingListComponent implements OnInit {
   readingHistory: any[] = [];
-
-  constructor(
-    private blogService: BlogService,
-    private auth: AuthService,
-    private router: Router
-  ) {}
+  constructor(private blogService: BlogService, private authService: AuthService, private router: Router) {}
 
   async ngOnInit() {
-    const user = await this.auth.getCurrentUser();
+    const user = await this.authService.getCurrentUser();
     if (user) {
       const { data } = await this.blogService.getUserReadPosts(user.id);
       this.readingHistory = data || [];
@@ -109,4 +104,4 @@ export class ReadingListComponent implements OnInit {
   readAgain(blogId: string) {
     this.router.navigate(['/blog', blogId]);
   }
-} 
+}

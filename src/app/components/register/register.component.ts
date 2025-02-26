@@ -2,6 +2,8 @@ import { Component } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
+import { ReactiveFormsModule } from '@angular/forms';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-register',
@@ -136,8 +138,8 @@ import { AuthService } from '../../services/auth.service';
       button {
         width: 100%;
         padding: 1rem;
-        background: #ff1a75;
-        color: white;
+        background: #e2e2e2;
+        color: #4a4a4a;
         border: none;
         border-radius: 8px;
         font-size: 1rem;
@@ -145,7 +147,7 @@ import { AuthService } from '../../services/auth.service';
         transition: background 0.3s ease;
 
         &:hover:not(:disabled) {
-          background: darken(#ff1a75, 10%);
+          background: #d1d1d1;
         }
 
         &:disabled {
@@ -160,7 +162,7 @@ import { AuthService } from '../../services/auth.service';
         color: #666;
 
         a {
-          color: #ff1a75;
+          color: #4a4a4a;
           text-decoration: none;
           margin-left: 0.5rem;
 
@@ -184,7 +186,9 @@ import { AuthService } from '../../services/auth.service';
       margin-bottom: 1rem;
       font-size: 0.9rem;
     }
-  `]
+  `],
+  standalone: true,
+  imports: [ReactiveFormsModule, CommonModule]
 })
 export class RegisterComponent {
   registerForm: FormGroup;

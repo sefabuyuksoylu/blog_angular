@@ -23,34 +23,32 @@ import { AdminStatsComponent } from './components/admin/admin-stats.component';
 import { UserListComponent } from './components/admin/user-list.component';
 
 @NgModule({
-  declarations: [
-    AppComponent,
-    BlogListComponent,
-    LoginComponent,
-    RegisterComponent,
-    BlogDetailComponent,
-    BlogEditorComponent,
-    MyBlogsComponent,
-    CategoryBlogsComponent,
-    CategoryListComponent
-  ],
+  declarations: [],
   imports: [
-    BrowserModule,
+    BrowserModule.withServerTransition({ appId: 'serverApp' }),
     CommonModule,
     AppRoutingModule,
     FormsModule,
     ReactiveFormsModule,
     HttpClientModule,
     RouterModule,
+    AppComponent,
+    BlogDetailComponent,
+    BlogEditorComponent,
     UserListComponent,
     AdminStatsComponent,
-    ReadingListComponent
+    ReadingListComponent,
+    BlogListComponent,
+    LoginComponent,
+    RegisterComponent,
+    MyBlogsComponent,
+    CategoryBlogsComponent,
+    CategoryListComponent
   ],
   providers: [
     SupabaseService,
     AuthService,
     BlogService
-  ],
-  bootstrap: [AppComponent]
+  ]
 })
 export class AppModule { }

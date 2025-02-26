@@ -5,6 +5,8 @@ import { AuthService } from '../../services/auth.service';
 import { Category } from '../../models/blog.model';
 import { FormGroup, FormBuilder } from '@angular/forms';
 import { Validators } from '@angular/forms';
+import { ReactiveFormsModule } from '@angular/forms';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-category-list',
@@ -65,12 +67,16 @@ import { Validators } from '@angular/forms';
         }
 
         .add-btn {
-          background: #ff1a75;
-          color: white;
+          background: #e2e2e2;
+          color: #4a4a4a;
           border: none;
           padding: 0.8rem 1.5rem;
           border-radius: 8px;
           cursor: pointer;
+
+          &:hover {
+            background: #d1d1d1;
+          }
         }
       }
 
@@ -97,14 +103,16 @@ import { Validators } from '@angular/forms';
             border: none;
             border-radius: 8px;
             cursor: pointer;
+            
 
             &[type="submit"] {
-              background: #ff1a75;
-              color: white;
+              background: #f0f0f0;
+              color: black;
             }
 
             &[type="button"] {
               background: #f0f0f0;
+              color: black;
             }
           }
         }
@@ -138,21 +146,27 @@ import { Validators } from '@angular/forms';
 
           button {
             flex: 1;
-            padding: 0.8rem;
+            padding: 0.5rem 1rem;
+            background: #e2e2e2;
+            color: #4a4a4a;
             border: none;
-            border-radius: 8px;
+            border-radius: 4px;
             cursor: pointer;
-            background: #ff1a75;
-            color: white;
+
+            &:hover {
+              background: #d1d1d1;
+            }
 
             &.delete {
-              background: #ff4444;
+              background: #e2e2e2;
             }
           }
         }
       }
     }
-  `]
+  `],
+  standalone: true,
+  imports: [ReactiveFormsModule, CommonModule]
 })
 export class CategoryListComponent implements OnInit {
   categories: Category[] = [];
@@ -172,52 +186,64 @@ export class CategoryListComponent implements OnInit {
       slug: ['']
     });
 
+    // İsim değiştiğinde otomatik slug oluştur
     this.categoryForm.get('name')?.valueChanges.subscribe(name => {
-      const slug = this.createSlug(name);
-      this.categoryForm.patchValue({ slug }, { emitEvent: false });
+      if (name) {
+        const slug = name
+          .toLowerCase()
+          .trim()
+          .replace(/[^\w\s-]/g, '')
+          .replace(/[\s_-]+/g, '-')
+          .replace(/^-+|-+$/g, '')
+          .replace(/ğ/g, 'g')
+          .replace(/ü/g, 'u')
+          .replace(/ş/g, 's')
+          .replace(/ı/g, 'i')
+          .replace(/ö/g, 'o')
+          .replace(/ç/g, 'c');
+        
+        this.categoryForm.patchValue({ slug }, { emitEvent: false });
+      }
     });
   }
 
   async ngOnInit() {
-    this.isAdmin = await this.auth.isAdmin();
     await this.loadCategories();
+    const user = await this.auth.getCurrentUser();
+    if (user) {
+      const { data: profile } = await this.auth.getProfile(user.id);
+      this.isAdmin = profile?.role === 'admin';
+    }
   }
 
   async loadCategories() {
     const { data } = await this.blogService.getCategories();
-    if (data) this.categories = data;
-  }
-
-  createSlug(name: string): string {
-    return name
-      .toLowerCase()
-      .trim()
-      .replace(/[^\w\s-]/g, '')
-      .replace(/[\s_-]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .replace(/ğ/g, 'g')
-      .replace(/ü/g, 'u')
-      .replace(/ş/g, 's')
-      .replace(/ı/g, 'i')
-      .replace(/ö/g, 'o')
-      .replace(/ç/g, 'c');
+    this.categories = data || [];
   }
 
   async addCategory() {
     if (this.categoryForm.valid) {
       try {
         this.isLoading = true;
-        const categoryData = {
-          ...this.categoryForm.value,
-          slug: this.createSlug(this.categoryForm.value.name)
-        };
-        await this.blogService.createCategory(categoryData);
-        this.showAddForm = false;
-        this.categoryForm.reset();
-        await this.loadCategories();
-      } catch (error) {
+        console.log('Form değerleri:', this.categoryForm.value);
+
+        const { data, error } = await this.blogService.createCategory(this.categoryForm.value);
+        
+        if (error) {
+          console.error('Kategori eklenemedi:', error);
+          alert(error.message || 'Kategori eklenirken bir hata oluştu');
+          return;
+        }
+
+        if (data) {
+          console.log('Kategori başarıyla eklendi:', data);
+          await this.loadCategories();
+          this.categoryForm.reset();
+          this.showAddForm = false;
+        }
+      } catch (error: any) {
         console.error('Kategori ekleme hatası:', error);
-        alert('Kategori eklenirken bir hata oluştu');
+        alert(error?.message || 'Beklenmeyen bir hata oluştu');
       } finally {
         this.isLoading = false;
       }

@@ -2,6 +2,8 @@ import { Component, OnInit } from '@angular/core';
 import { AuthService } from './services/auth.service';
 import { Router } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
+import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
 
 @Component({
   selector: 'app-root',
@@ -138,14 +140,14 @@ import { BehaviorSubject } from 'rxjs';
     }
 
     .new-post-btn {
-      background: #ff1a75 !important;
-      color: white !important;
+      background: #e2e2e2 !important;
+      color: #4a4a4a !important;
       padding: 0.5rem 1rem;
       border-radius: 20px;
       text-decoration: none;
 
       &:hover {
-        background: darken(#ff1a75, 10%) !important;
+        background: #d1d1d1 !important;
       }
     }
 
@@ -200,16 +202,16 @@ import { BehaviorSubject } from 'rxjs';
         font-weight: 500;
         
         &:last-child {
-          background: #ff1a75;
-          color: white;
+          background: #e2e2e2;
+          color: #4a4a4a;
         }
 
         &:hover {
           color: #333;
           
           &:last-child {
-            background: darken(#ff1a75, 10%);
-            color: white;
+            background: #d1d1d1;
+            color: #4a4a4a;
           }
         }
       }
@@ -227,7 +229,9 @@ import { BehaviorSubject } from 'rxjs';
         color: #333;
       }
     }
-  `]
+  `],
+  standalone: true,
+  imports: [CommonModule, RouterModule]
 })
 export class AppComponent implements OnInit {
   isLoggedIn$ = this.auth.authState$;
