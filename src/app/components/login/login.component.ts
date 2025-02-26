@@ -2,6 +2,9 @@ import { Component } from '@angular/core';
 import { AuthService } from '../../services/auth.service';
 import { Router } from '@angular/router';
 import { FormGroup, FormBuilder, Validators } from '@angular/forms';
+import { ReactiveFormsModule } from '@angular/forms';
+import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
 
 @Component({
   selector: 'app-login',
@@ -102,16 +105,16 @@ import { FormGroup, FormBuilder, Validators } from '@angular/forms';
       button {
         width: 100%;
         padding: 1rem;
-        background: #ff1a75;
-        color: white;
+        background: #e2e2e2;
+        color: #4a4a4a;
         border: none;
         border-radius: 8px;
         font-size: 1rem;
         cursor: pointer;
         transition: background 0.3s ease;
 
-        &:hover {
-          background: darken(#ff1a75, 10%);
+        &:hover:not(:disabled) {
+          background: #d1d1d1;
         }
       }
 
@@ -121,7 +124,7 @@ import { FormGroup, FormBuilder, Validators } from '@angular/forms';
         color: #666;
 
         a {
-          color: #ff1a75;
+          color: #4a4a4a;
           text-decoration: none;
           margin-left: 0.5rem;
 
@@ -143,7 +146,9 @@ import { FormGroup, FormBuilder, Validators } from '@angular/forms';
       background: #ccc;
       cursor: not-allowed;
     }
-  `]
+  `],
+  standalone: true,
+  imports: [ReactiveFormsModule, CommonModule, RouterModule]
 })
 export class LoginComponent {
   loginForm: FormGroup;

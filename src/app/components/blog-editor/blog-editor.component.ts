@@ -4,6 +4,8 @@ import { Router } from '@angular/router';
 import { BlogService } from '../../services/blog.service';
 import { AuthService } from '../../services/auth.service';
 import { Category } from '../../models/blog.model';
+import { ReactiveFormsModule } from '@angular/forms';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-blog-editor',
@@ -71,16 +73,18 @@ import { Category } from '../../models/blog.model';
       <div class="error-message" *ngIf="errorMessage">{{errorMessage}}</div>
     </div>
   `,
-  styleUrls: ['./blog-editor.component.scss']
+  styleUrls: ['./blog-editor.component.scss'],
+  standalone: true,
+  imports: [ReactiveFormsModule, CommonModule]
 })
 export class BlogEditorComponent implements OnInit {
   blogForm: FormGroup;
   categories: Category[] = [];
-  isLoading: boolean = false;
-  showPreview: boolean = false;
+  isLoading = false;
+  showPreview = false;
   selectedImage: File | null = null;
   imagePreview: string | ArrayBuffer | null = null;
-  isEditing: boolean = false;
+  isEditing = false;
   successMessage: string = '';
   errorMessage: string = '';
 
@@ -92,15 +96,21 @@ export class BlogEditorComponent implements OnInit {
   ) {
     this.blogForm = this.fb.group({
       title: ['', Validators.required],
-      content: ['', [Validators.required, Validators.minLength(100)]],
+      content: ['', Validators.required],
       category_id: ['', Validators.required],
-      image: ['', Validators.required]
+      image: ['']
     });
   }
 
   async ngOnInit() {
-    const { data } = await this.blogService.getCategories();
-    if (data) this.categories = data;
+    try {
+      const { data } = await this.blogService.getCategories();
+      if (data) {
+        this.categories = data;
+      }
+    } catch (error) {
+      console.error('Kategoriler yüklenirken hata:', error);
+    }
   }
 
   async onSubmit() {
@@ -117,19 +127,15 @@ export class BlogEditorComponent implements OnInit {
           author_id: user.id
         };
 
-        // Resim varsa yükle
         if (this.selectedImage) {
           await this.blogService.createBlog(blogData, this.selectedImage);
         } else {
           await this.blogService.createBlog(blogData);
         }
 
-        // Başarılı mesajı göster
-        this.successMessage = 'Blog yazısı başarıyla yayınlandı!';
         this.router.navigate(['/my-posts']);
       } catch (error) {
         console.error('Blog yayınlama hatası:', error);
-        this.errorMessage = 'Blog yayınlanırken bir hata oluştu';
       } finally {
         this.isLoading = false;
       }

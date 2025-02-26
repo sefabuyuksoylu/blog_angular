@@ -3,6 +3,8 @@ import { Router } from '@angular/router';
 import { BlogService } from '../../services/blog.service';
 import { AuthService } from '../../services/auth.service';
 import { Blog } from '../../models/blog.model';
+import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
 
 @Component({
   selector: 'app-my-blogs',
@@ -10,9 +12,6 @@ import { Blog } from '../../models/blog.model';
     <div class="my-blogs-container">
       <div class="header">
         <h1>Yazılarım</h1>
-        <button routerLink="/new-post">
-          <i class="fas fa-plus"></i> Yeni Yazı
-        </button>
       </div>
 
       <div class="blog-grid">
@@ -43,18 +42,11 @@ import { Blog } from '../../models/blog.model';
     }
 
     .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
       margin-bottom: 2rem;
 
-      button {
-        background: #ff1a75;
-        color: white;
-        border: none;
-        padding: 0.8rem 1.5rem;
-        border-radius: 8px;
-        cursor: pointer;
+      h1 {
+        font-size: 2rem;
+        color: #333;
       }
     }
 
@@ -89,19 +81,26 @@ import { Blog } from '../../models/blog.model';
 
           button {
             padding: 0.5rem 1rem;
+            background: #e2e2e2;
+            color: #4a4a4a;
             border: none;
             border-radius: 4px;
             cursor: pointer;
 
+            &:hover {
+              background: #d1d1d1;
+            }
+
             &.delete {
-              background: #ff4444;
-              color: white;
+              background: #e2e2e2;
             }
           }
         }
       }
     }
-  `]
+  `],
+  standalone: true,
+  imports: [CommonModule, RouterModule]
 })
 export class MyBlogsComponent implements OnInit {
   blogs: Blog[] = [];

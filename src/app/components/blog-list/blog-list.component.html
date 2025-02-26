@@ -1,44 +1,44 @@
-<div class="blog-container">
-  <!-- Hero Section -->
-  <section class="hero-section">
-    <h1>Reading lists</h1>
-    <div class="featured-card">
-      <div class="card-content">
-        <h2>Popular</h2>
-        <p>Check out the most read and most shared posts from the blog</p>
-      </div>
-      <div class="card-image">
-        <img src="assets/images/featured.jpg" alt="Featured">
-      </div>
+<div class="blog-list-container">
+  <div class="header">
+    <h1>Blog Yazıları</h1>
+    <div class="filters">
+      <select class="filter-select" [(ngModel)]="selectedCategory" (change)="filterByCategory()">
+        <option value="">Tüm Kategoriler</option>
+        <option *ngFor="let category of categories" [value]="category.id">
+          {{category.name}}
+        </option>
+      </select>
+      <select class="filter-select" [(ngModel)]="sortBy" (change)="sortBlogs()">
+        <option value="newest">En Yeni</option>
+        <option value="popular">En Popüler</option>
+      </select>
     </div>
-  </section>
+  </div>
 
-  <!-- Blog List -->
-  <section class="blog-list">
-    <article *ngFor="let blog of blogs; let i = index" class="blog-item">
-      <div class="blog-number">{{ i + 1 | number:'2.0' }}</div>
-      <div class="blog-content">
-        <h3>{{ blog.title }}</h3>
-        <p>{{ blog.content | slice:0:150 }}...</p>
-        <div class="blog-meta">
-          <span class="author">By {{ blog.author?.email }}</span>
-          <span class="views">{{ blog.views_count }} views</span>
-          <span class="category">{{ blog.categories?.name }}</span>
+  <div class="blog-grid">
+    <article *ngFor="let blog of blogs" class="blog-card" [routerLink]="['/blog', blog.id]">
+      <div class="card-image" [style.backgroundImage]="'url(' + blog.image + ')'">
+        <div class="category-badge">{{blog.categories?.name}}</div>
+      </div>
+      <div class="card-content">
+        <h2 class="title">{{blog.title}}</h2>
+        <p class="excerpt">{{blog.content | slice:0:150}}...</p>
+        <div class="card-footer">
+          <div class="author">
+            <img [src]="blog.profiles?.avatar_url" [alt]="blog.profiles?.full_name" class="author-avatar">
+            <div class="author-info">
+              <span class="author-name">{{blog.profiles?.full_name}}</span>
+              <span class="post-date">{{blog.created_at | date:'mediumDate'}}</span>
+            </div>
+          </div>
+          <div class="stats">
+            <span class="views">
+              <i class="far fa-eye"></i>
+              {{blog.views_count}}
+            </span>
+          </div>
         </div>
       </div>
-      <div class="blog-image">
-        <img [src]="blog.image" [alt]="blog.title">
-      </div>
     </article>
-  </section>
-
-  <!-- Instagram Stories Section -->
-  <section class="insta-stories">
-    <h2>Insta Stories</h2>
-    <div class="stories-grid">
-      <div class="story-item" *ngFor="let story of stories">
-        <img [src]="story.image" [alt]="story.title">
-      </div>
-    </div>
-  </section>
+  </div>
 </div> 

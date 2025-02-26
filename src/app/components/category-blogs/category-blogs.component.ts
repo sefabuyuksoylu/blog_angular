@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { BlogService } from '../../services/blog.service';
 import { Blog, Category } from '../../models/blog.model';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-category-blogs',
@@ -75,24 +76,26 @@ import { Blog, Category } from '../../models/blog.model';
         }
 
         button {
-          background: #ff1a75;
-          color: white;
+          background: #e2e2e2;
+          color: #4a4a4a;
           border: none;
           padding: 0.5rem 1rem;
           border-radius: 20px;
           cursor: pointer;
 
           &:hover {
-            background: darken(#ff1a75, 10%);
+            background: #d1d1d1;
           }
         }
       }
     }
-  `]
+  `],
+  standalone: true,
+  imports: [CommonModule]
 })
 export class CategoryBlogsComponent implements OnInit {
+  category: Category | null = null;
   blogs: Blog[] = [];
-  category?: Category;
 
   constructor(
     private route: ActivatedRoute,
@@ -107,7 +110,6 @@ export class CategoryBlogsComponent implements OnInit {
       if (categoryData) {
         this.category = categoryData;
       }
-
       const { data: blogsData } = await this.blogService.getBlogsByCategory(categoryId);
       if (blogsData) {
         this.blogs = blogsData;
@@ -118,4 +120,4 @@ export class CategoryBlogsComponent implements OnInit {
   readBlog(id: string) {
     this.router.navigate(['/blog', id]);
   }
-} 
+}
