@@ -9,11 +9,15 @@ import { Category } from '../../models/blog.model';
   selector: 'app-blog-editor',
   template: `
     <div class="editor-container">
-      <h1>Yeni Blog Yazısı</h1>
+      <h1>{{ isEditing ? 'Blog Yazısını Düzenle' : 'Yeni Blog Yazısı' }}</h1>
+      
       <form [formGroup]="blogForm" (ngSubmit)="onSubmit()">
         <div class="form-group">
           <label>Başlık</label>
           <input type="text" formControlName="title" placeholder="Blog başlığı">
+          <div class="error" *ngIf="blogForm.get('title')?.touched && blogForm.get('title')?.invalid">
+            Başlık gereklidir
+          </div>
         </div>
 
         <div class="form-group">
@@ -24,22 +28,47 @@ import { Category } from '../../models/blog.model';
               {{cat.name}}
             </option>
           </select>
+          <div class="error" *ngIf="blogForm.get('category_id')?.touched && blogForm.get('category_id')?.invalid">
+            Kategori seçimi gereklidir
+          </div>
         </div>
 
         <div class="form-group">
-          <label>Görsel URL</label>
-          <input type="text" formControlName="image" placeholder="Blog görseli için URL">
+          <label>Kapak Görseli</label>
+          <input type="file" (change)="onFileSelected($event)" accept="image/*">
+          <div class="preview" *ngIf="selectedImage">
+            <img [src]="imagePreview" alt="Preview">
+          </div>
         </div>
 
         <div class="form-group">
           <label>İçerik</label>
           <textarea formControlName="content" rows="10" placeholder="Blog içeriği"></textarea>
+          <div class="error" *ngIf="blogForm.get('content')?.touched && blogForm.get('content')?.invalid">
+            İçerik gereklidir
+          </div>
         </div>
 
-        <button type="submit" [disabled]="blogForm.invalid || isLoading">
-          {{ isLoading ? 'Yayınlanıyor...' : 'Yayınla' }}
-        </button>
+        <div class="actions">
+          <button type="button" (click)="preview()" class="preview-btn">Önizle</button>
+          <button type="submit" [disabled]="blogForm.invalid || isLoading">
+            {{ isLoading ? 'Kaydediliyor...' : (isEditing ? 'Güncelle' : 'Yayınla') }}
+          </button>
+        </div>
       </form>
+
+      <!-- Önizleme Modal -->
+      <div class="preview-modal" *ngIf="showPreview">
+        <div class="preview-content">
+          <h2>{{blogForm.get('title')?.value}}</h2>
+          <img [src]="imagePreview" *ngIf="imagePreview">
+          <div class="blog-content">{{blogForm.get('content')?.value}}</div>
+          <button (click)="showPreview = false">Kapat</button>
+        </div>
+      </div>
+
+      <div class="success-message" *ngIf="successMessage">{{successMessage}}</div>
+      <div class="error-message" *ngIf="errorMessage">{{errorMessage}}</div>
     </div>
   `,
   styleUrls: ['./blog-editor.component.scss']
@@ -48,6 +77,12 @@ export class BlogEditorComponent implements OnInit {
   blogForm: FormGroup;
   categories: Category[] = [];
   isLoading: boolean = false;
+  showPreview: boolean = false;
+  selectedImage: File | null = null;
+  imagePreview: string | ArrayBuffer | null = null;
+  isEditing: boolean = false;
+  successMessage: string = '';
+  errorMessage: string = '';
 
   constructor(
     private fb: FormBuilder,
@@ -57,9 +92,9 @@ export class BlogEditorComponent implements OnInit {
   ) {
     this.blogForm = this.fb.group({
       title: ['', Validators.required],
-      content: ['', Validators.required],
-      image: ['', Validators.required],
-      category_id: ['', Validators.required]
+      content: ['', [Validators.required, Validators.minLength(100)]],
+      category_id: ['', Validators.required],
+      image: ['', Validators.required]
     });
   }
 
@@ -70,17 +105,47 @@ export class BlogEditorComponent implements OnInit {
 
   async onSubmit() {
     if (this.blogForm.valid) {
-      const user = await this.auth.getCurrentUser();
-      if (!user) return;
+      try {
+        this.isLoading = true;
+        const user = await this.auth.getCurrentUser();
+        if (!user) {
+          throw new Error('Kullanıcı girişi gerekli');
+        }
 
-      const blog = {
-        ...this.blogForm.value,
-        author_id: user.id
-      };
+        const blogData = {
+          ...this.blogForm.value,
+          author_id: user.id
+        };
 
-      this.isLoading = true;
-      await this.blogService.createBlog(blog);
-      this.router.navigate(['/my-posts']);
+        // Resim varsa yükle
+        if (this.selectedImage) {
+          await this.blogService.createBlog(blogData, this.selectedImage);
+        } else {
+          await this.blogService.createBlog(blogData);
+        }
+
+        // Başarılı mesajı göster
+        this.successMessage = 'Blog yazısı başarıyla yayınlandı!';
+        this.router.navigate(['/my-posts']);
+      } catch (error) {
+        console.error('Blog yayınlama hatası:', error);
+        this.errorMessage = 'Blog yayınlanırken bir hata oluştu';
+      } finally {
+        this.isLoading = false;
+      }
     }
+  }
+
+  onFileSelected(event: Event) {
+    const target = event.target as HTMLInputElement;
+    if (target.files) {
+      const file = target.files[0];
+      this.selectedImage = file;
+      this.imagePreview = URL.createObjectURL(file);
+    }
+  }
+
+  preview() {
+    this.showPreview = true;
   }
 } 

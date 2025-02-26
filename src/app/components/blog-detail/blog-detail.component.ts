@@ -14,7 +14,7 @@ import { Blog } from '../../models/blog.model';
       </div>
 
       <div class="meta">
-        <span class="author">{{blog.author?.email}}</span>
+        <span class="author">{{blog.profiles?.full_name}}</span>
         <span class="date">{{blog.created_at | date}}</span>
         <span class="category">{{blog.categories?.name}}</span>
         <span class="views">{{blog.views_count}} görüntülenme</span>
@@ -76,14 +76,21 @@ export class BlogDetailComponent implements OnInit {
   async ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
-      const blog = await this.blogService.getBlogById(id);
-      this.blog = blog;
+      try {
+        // Blog detayını al
+        const blog = await this.blogService.getBlogById(id);
+        this.blog = blog;
 
-      await this.blogService.incrementViews(id);
-      
-      const user = await this.auth.getCurrentUser();
-      if (user) {
-        await this.blogService.addToReadingHistory(user.id, id);
+        // Görüntülenme sayısını artır
+        await this.blogService.incrementViews(id);
+
+        // Okuma geçmişine ekle
+        const user = await this.auth.getCurrentUser();
+        if (user) {
+          await this.blogService.addToReadingHistory(user.id, id);
+        }
+      } catch (error) {
+        console.error('Blog detay hatası:', error);
       }
     }
   }
