@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { BlogService } from '../../services/blog.service';
 import { AuthService } from '../../services/auth.service';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-reading-list',
@@ -84,7 +85,9 @@ import { AuthService } from '../../services/auth.service';
         }
       }
     }
-  `]
+  `],
+  standalone: true,
+  imports: [CommonModule]
 })
 export class ReadingListComponent implements OnInit {
   readingHistory: any[] = [];

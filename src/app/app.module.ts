@@ -19,6 +19,8 @@ import { SupabaseService } from './services/supabase.service';
 import { BlogService } from './services/blog.service';
 import { MyBlogsComponent } from './components/my-blogs/my-blogs.component';
 import { AuthService } from './services/auth.service';
+import { AdminStatsComponent } from './components/admin/admin-stats.component';
+import { UserListComponent } from './components/admin/user-list.component';
 
 @NgModule({
   declarations: [
@@ -29,7 +31,6 @@ import { AuthService } from './services/auth.service';
     BlogDetailComponent,
     BlogEditorComponent,
     MyBlogsComponent,
-    ReadingListComponent,
     CategoryBlogsComponent,
     CategoryListComponent
   ],
@@ -40,7 +41,10 @@ import { AuthService } from './services/auth.service';
     FormsModule,
     ReactiveFormsModule,
     HttpClientModule,
-    RouterModule
+    RouterModule,
+    UserListComponent,
+    AdminStatsComponent,
+    ReadingListComponent
   ],
   providers: [
     SupabaseService,

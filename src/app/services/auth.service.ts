@@ -218,4 +218,34 @@ export class AuthService {
       console.error('Profil güncelleme hatası:', error);
     }
   }
+
+  async getUserCount() {
+    return await this.supabase.client
+      .from('profiles')
+      .select('id', { count: 'exact', head: true });
+  }
+
+  async getAllUsers() {
+    return await this.supabase.client
+      .from('profiles')
+      .select(`
+        *,
+        blogs:blogs(count)
+      `)
+      .order('created_at', { ascending: false });
+  }
+
+  async updateUserRole(userId: string, role: string) {
+    return await this.supabase.client
+      .from('profiles')
+      .update({ role })
+      .eq('id', userId);
+  }
+
+  async deleteUser(userId: string) {
+    return await this.supabase.client
+      .from('profiles')
+      .delete()
+      .eq('id', userId);
+  }
 } 

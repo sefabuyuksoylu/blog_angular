@@ -21,7 +21,7 @@ import { Validators } from '@angular/forms';
       <form *ngIf="showAddForm && isAdmin" [formGroup]="categoryForm" (ngSubmit)="addCategory()" class="category-form">
         <div class="form-group">
           <input type="text" formControlName="name" placeholder="Kategori Adı">
-          <input type="text" formControlName="slug" placeholder="Slug">
+          <input type="text" formControlName="slug" placeholder="URL Slug (Otomatik oluşturulur)">
           <button type="submit" [disabled]="categoryForm.invalid || isLoading">
             {{ isLoading ? 'Ekleniyor...' : 'Ekle' }}
           </button>
@@ -169,7 +169,12 @@ export class CategoryListComponent implements OnInit {
   ) {
     this.categoryForm = this.fb.group({
       name: ['', Validators.required],
-      slug: ['', Validators.required]
+      slug: ['']
+    });
+
+    this.categoryForm.get('name')?.valueChanges.subscribe(name => {
+      const slug = this.createSlug(name);
+      this.categoryForm.patchValue({ slug }, { emitEvent: false });
     });
   }
 
@@ -183,11 +188,30 @@ export class CategoryListComponent implements OnInit {
     if (data) this.categories = data;
   }
 
+  createSlug(name: string): string {
+    return name
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/[\s_-]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .replace(/ğ/g, 'g')
+      .replace(/ü/g, 'u')
+      .replace(/ş/g, 's')
+      .replace(/ı/g, 'i')
+      .replace(/ö/g, 'o')
+      .replace(/ç/g, 'c');
+  }
+
   async addCategory() {
     if (this.categoryForm.valid) {
       try {
         this.isLoading = true;
-        await this.blogService.createCategory(this.categoryForm.value);
+        const categoryData = {
+          ...this.categoryForm.value,
+          slug: this.createSlug(this.categoryForm.value.name)
+        };
+        await this.blogService.createCategory(categoryData);
         this.showAddForm = false;
         this.categoryForm.reset();
         await this.loadCategories();
