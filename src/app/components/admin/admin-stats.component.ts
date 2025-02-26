@@ -1,7 +1,6 @@
-import { Component, OnInit } from '@angular/core';
-import { BlogService } from '../../services/blog.service';
-import { AuthService } from '../../services/auth.service';
-import { CommonModule } from '@angular/common';  // date pipe için
+import { Component, OnInit, OnDestroy } from '@angular/core';
+import { SupabaseService } from '../../services/supabase.service';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-admin-stats',
@@ -38,9 +37,9 @@ import { CommonModule } from '@angular/common';  // date pipe için
           <tbody>
             <tr *ngFor="let cat of categoryStats">
               <td>{{cat.name}}</td>
-              <td>{{cat.blogs.count}}</td>
+              <td>{{cat.blog_count}}</td>
               <td>{{cat.total_views}}</td>
-              <td>{{cat.total_views / cat.blogs.count | number:'1.0-0'}}</td>
+              <td>{{cat.total_views / (cat.blog_count || 1) | number:'1.0-0'}}</td>
             </tr>
           </tbody>
         </table>
@@ -113,7 +112,7 @@ import { CommonModule } from '@angular/common';  // date pipe için
   standalone: true,
   imports: [CommonModule]
 })
-export class AdminStatsComponent implements OnInit {
+export class AdminStatsComponent implements OnInit, OnDestroy {
   stats = {
     totalBlogs: 0,
     totalViews: 0,
@@ -121,40 +120,66 @@ export class AdminStatsComponent implements OnInit {
   };
   
   categoryStats: any[] = [];
+  private subscription: any;
 
-  constructor(
-    private blogService: BlogService,
-    private auth: AuthService
-  ) {}
+  constructor(private supabase: SupabaseService) {}
 
-  async ngOnInit() {
-    await this.loadStats();
+  ngOnInit() {
+    this.loadStats();
+    this.setupRealtimeSubscription();
   }
 
   async loadStats() {
     try {
-      // Kategori istatistikleri
-      const { data: categories } = await this.blogService.getCategoryStats();
-      this.categoryStats = categories || [];
-
       // Toplam blog ve görüntülenme sayısı
-      let totalBlogs = 0;
-      let totalViews = 0;
-      this.categoryStats.forEach(cat => {
-        totalBlogs += cat.blogs.count;
-        totalViews += cat.total_views || 0;
-      });
+      const { data: blogs } = await this.supabase.client
+        .from('blogs')
+        .select('views_count');
 
-      // Kullanıcı sayısı
-      const { count } = await this.auth.getUserCount();
+      const totalBlogs = blogs?.length || 0;
+      const totalViews = blogs?.reduce((sum, blog) => sum + (blog.views_count || 0), 0) || 0;
+
+      // Toplam kullanıcı sayısı
+      const { count: totalUsers } = await this.supabase.client
+        .from('profiles')
+        .select('*', { count: 'exact', head: true });
+
+      // Kategori istatistikleri
+      const { data: categories } = await this.supabase.client
+        .from('category_stats')
+        .select('*')
+        .order('blog_count', { ascending: false });
 
       this.stats = {
         totalBlogs,
         totalViews,
-        totalUsers: count || 0
+        totalUsers: totalUsers || 0
       };
+
+      this.categoryStats = categories || [];
+
     } catch (error) {
       console.error('İstatistik yükleme hatası:', error);
+    }
+  }
+
+  setupRealtimeSubscription() {
+    this.subscription = this.supabase.client
+      .channel('db-changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'blogs' },
+        () => this.loadStats()
+      )
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'profiles' },
+        () => this.loadStats()
+      )
+      .subscribe();
+  }
+
+  ngOnDestroy() {
+    if (this.subscription) {
+      this.subscription.unsubscribe();
     }
   }
 } 
