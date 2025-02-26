@@ -10,6 +10,7 @@ import { ReadingListComponent } from './components/reading-list/reading-list.com
 import { MyBlogsComponent } from './components/my-blogs/my-blogs.component';
 import { AuthGuard } from './guards/auth.guard';
 import { CategoryListComponent } from './components/category-list/category-list.component';
+import { AdminGuard } from './guards/admin.guard';
 
 const routes: Routes = [
   { path: '', component: BlogListComponent },
@@ -22,6 +23,7 @@ const routes: Routes = [
   { path: 'my-posts', component: MyBlogsComponent, canActivate: [AuthGuard] },
   { path: 'reading-list', component: ReadingListComponent, canActivate: [AuthGuard] },
   { path: 'new-post', component: BlogEditorComponent, canActivate: [AuthGuard] },
+  { path: 'admin/categories', component: CategoryListComponent, canActivate: [AuthGuard, AdminGuard] },
   { path: '**', redirectTo: '' }
 ];
 

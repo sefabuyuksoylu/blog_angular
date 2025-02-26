@@ -1,3 +1,6 @@
+import { Category } from './blog.model';
+import { Profile as User } from './blog.model';  // Profile'ı User olarak yeniden adlandırıyoruz
+
 export interface Post {
   id: string;
   title: string;

@@ -7,7 +7,7 @@ import { User } from '@supabase/supabase-js';
   providedIn: 'root'
 })
 export class AuthService {
-  private authState = new BehaviorSubject<boolean>(false);
+  public authState = new BehaviorSubject<boolean>(false);
   private currentUser = new BehaviorSubject<User | null>(null);
   
   authState$ = this.authState.asObservable();
@@ -27,21 +27,21 @@ export class AuthService {
 
   async signUp(email: string, password: string, metadata: any = {}) {
     try {
-      // 1. Auth kaydı
+      
       const { data: authData, error: authError } = await this.supabase.client.auth.signUp({
         email,
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/login`,
           data: {
-            full_name: metadata.full_name // Auth metadata'ya da kaydedelim
+            full_name: metadata.full_name 
           }
         }
       });
 
       if (authError) throw authError;
 
-      // 2. Profil oluştur
+      
       if (authData.user) {
         const initials = metadata.full_name
           .split(' ')
@@ -87,7 +87,7 @@ export class AuthService {
       if (error) throw error;
 
       if (data.user) {
-        console.log('Auth user:', data.user); // Debug için
+        console.log('Auth user:', data.user); 
 
         // Profil bilgisini al
         const { data: profile, error: profileError } = await this.supabase.client
@@ -96,8 +96,8 @@ export class AuthService {
           .eq('id', data.user.id)
           .single();
 
-        console.log('Profile data:', profile); // Debug için
-        console.log('Profile error:', profileError); // Debug için
+        console.log('Profile data:', profile); 
+        console.log('Profile error:', profileError); 
 
         if (profileError) {
           console.error('Profil bilgisi alınamadı:', profileError);
@@ -134,16 +134,26 @@ export class AuthService {
   }
 
   async isAdmin() {
-    const user = await this.getCurrentUser();
-    if (!user) return false;
-    
-    const { data } = await this.supabase.client
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
+    try {
+      const user = await this.getCurrentUser();
+      if (!user) return false;
       
-    return data?.role === 'admin';
+      const { data, error } = await this.supabase.client
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+        
+      if (error) {
+        console.error('Admin kontrolü hatası:', error);
+        return false;
+      }
+
+      return data?.role === 'admin';
+    } catch (error) {
+      console.error('Admin kontrolü hatası:', error);
+      return false;
+    }
   }
 
   async getUserProfile() {
@@ -173,7 +183,6 @@ export class AuthService {
     }
   }
 
-  // Yeni metod: Email onayından sonra profil güncelleme
   async handleEmailConfirmation(user: any) {
     try {
       // Profil var mı kontrol et
@@ -184,7 +193,6 @@ export class AuthService {
         .single();
 
       if (!existingProfile) {
-        // Profil yoksa oluştur
         const initials = user.user_metadata.full_name
           .split(' ')
           .map((n: string) => n[0])

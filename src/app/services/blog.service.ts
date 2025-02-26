@@ -10,15 +10,30 @@ import { environment } from '../../environments/environment';
 export class BlogService {
   constructor(private supabase: SupabaseService) {}
 
-  async createBlog(blog: Partial<Blog>) {
-    const { data, error } = await this.supabase.client
-      .from('blogs')
-      .insert(blog)
-      .select()
-      .single();
+  async createBlog(blog: Partial<Blog>, image?: File) {
+    try {
+      let imageUrl = blog.image;
 
-    if (error) throw error;
-    return data;
+      if (image) {
+        imageUrl = await this.uploadImage(image);
+      }
+
+      const { data, error } = await this.supabase.client
+        .from('blogs')
+        .insert({
+          ...blog,
+          image: imageUrl,
+          views_count: 0
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Blog oluşturma hatası:', error);
+      throw error;
+    }
   }
 
   async getBlogs() {
@@ -69,15 +84,13 @@ export class BlogService {
   }
 
   async addToReadingHistory(userId: string, blogId: string) {
-    const { error } = await this.supabase.client
+    return await this.supabase.client
       .from('reading_history')
       .upsert({
         user_id: userId,
         blog_id: blogId,
         read_at: new Date().toISOString()
       });
-
-    if (error) throw error;
   }
 
   async getCategories() {
@@ -171,5 +184,69 @@ export class BlogService {
       .from('blogs')
       .delete()
       .eq('id', id);
+  }
+
+  async uploadImage(file: File): Promise<string> {
+    try {
+      const fileName = `${Date.now()}_${file.name}`;
+      const { data, error } = await this.supabase.client
+        .storage
+        .from('blog-images')
+        .upload(fileName, file);
+
+      if (error) throw error;
+
+      const { data: { publicUrl } } = this.supabase.client
+        .storage
+        .from('blog-images')
+        .getPublicUrl(data.path);
+
+      return publicUrl;
+    } catch (error) {
+      console.error('Resim yükleme hatası:', error);
+      throw error;
+    }
+  }
+
+  async deleteCategory(id: string) {
+    const { data: userRole } = await this.supabase.client
+      .from('profiles')
+      .select('role')
+      .single();
+
+    if (userRole?.role !== 'admin') {
+      throw new Error('Only admins can delete categories');
+    }
+
+    return await this.supabase.client
+      .from('categories')
+      .delete()
+      .eq('id', id);
+  }
+
+  async updateCategory(id: string, data: Partial<Category>) {
+    const { data: userRole } = await this.supabase.client
+      .from('profiles')
+      .select('role')
+      .single();
+
+    if (userRole?.role !== 'admin') {
+      throw new Error('Only admins can update categories');
+    }
+
+    return await this.supabase.client
+      .from('categories')
+      .update(data)
+      .eq('id', id);
+  }
+
+  async getCategoryStats() {
+    return await this.supabase.client
+      .from('categories')
+      .select(`
+        *,
+        blogs:blogs(count),
+        total_views:blogs(sum(views_count))
+      `);
   }
 } 

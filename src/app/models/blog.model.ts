@@ -8,7 +8,11 @@ export interface Blog {
   views_count: number;
   created_at: string;
   categories?: Category;
-  author?: Profile;
+  profiles?: {
+    full_name: string;
+    avatar_url: string;
+    email: string;
+  };
 }
 
 export interface Category {

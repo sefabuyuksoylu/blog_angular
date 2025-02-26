@@ -6,32 +6,29 @@ import { AuthService } from '../../services/auth.service';
 @Component({
   selector: 'app-reading-list',
   template: `
-    <div class="reading-list">
-      <h1>Okuma Listem</h1>
+    <div class="reading-history">
+      <h2>Okuma Geçmişim</h2>
       <div class="blog-grid">
-        <article *ngFor="let blog of readBlogs" class="blog-card">
-          <img [src]="blog.image" [alt]="blog.title">
+        <div *ngFor="let item of readingHistory" class="history-card">
+          <img [src]="item.blogs.image" [alt]="item.blogs.title">
           <div class="content">
-            <h2>{{blog.title}}</h2>
-            <p>{{blog.content | slice:0:150}}...</p>
-            <div class="meta">
-              <span>{{blog.read_at | date}}</span>
-              <button (click)="readBlog(blog.id)">Tekrar Oku</button>
-            </div>
+            <span class="date">{{item.read_at | date}}</span>
+            <h3>{{item.blogs.title}}</h3>
+            <p>{{item.blogs.content | slice:0:150}}...</p>
+            <button (click)="readAgain(item.blog_id)">Tekrar Oku</button>
           </div>
-        </article>
+        </div>
       </div>
     </div>
   `,
   styles: [`
-    .reading-list {
+    .reading-history {
       padding: 2rem;
     }
 
-    h1 {
+    h2 {
       margin-bottom: 2rem;
       color: #333;
-      text-align: center;
     }
 
     .blog-grid {
@@ -40,9 +37,9 @@ import { AuthService } from '../../services/auth.service';
       gap: 2rem;
     }
 
-    .blog-card {
+    .history-card {
       background: white;
-      border-radius: 8px;
+      border-radius: 12px;
       overflow: hidden;
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 
@@ -55,7 +52,14 @@ import { AuthService } from '../../services/auth.service';
       .content {
         padding: 1.5rem;
 
-        h2 {
+        .date {
+          color: #666;
+          font-size: 0.9rem;
+          display: block;
+          margin-bottom: 0.5rem;
+        }
+
+        h3 {
           margin-bottom: 1rem;
           color: #333;
         }
@@ -65,23 +69,17 @@ import { AuthService } from '../../services/auth.service';
           margin-bottom: 1rem;
         }
 
-        .meta {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          color: #666;
+        button {
+          width: 100%;
+          padding: 0.8rem;
+          background: #ff1a75;
+          color: white;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
 
-          button {
-            background: #ff1a75;
-            color: white;
-            border: none;
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            cursor: pointer;
-
-            &:hover {
-              background: darken(#ff1a75, 10%);
-            }
+          &:hover {
+            background: darken(#ff1a75, 10%);
           }
         }
       }
@@ -89,7 +87,7 @@ import { AuthService } from '../../services/auth.service';
   `]
 })
 export class ReadingListComponent implements OnInit {
-  readBlogs: any[] = [];
+  readingHistory: any[] = [];
 
   constructor(
     private blogService: BlogService,
@@ -101,11 +99,11 @@ export class ReadingListComponent implements OnInit {
     const user = await this.auth.getCurrentUser();
     if (user) {
       const { data } = await this.blogService.getUserReadPosts(user.id);
-      if (data) this.readBlogs = data;
+      this.readingHistory = data || [];
     }
   }
 
-  readBlog(id: string) {
-    this.router.navigate(['/blog', id]);
+  readAgain(blogId: string) {
+    this.router.navigate(['/blog', blogId]);
   }
 } 
