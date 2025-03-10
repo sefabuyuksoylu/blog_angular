@@ -79,6 +79,14 @@ import { CommonModule } from '@angular/common';
           </div>
         </div>
       </div>
+
+      <div *ngIf="errorMessage" class="error-alert">
+        {{errorMessage}}
+      </div>
+    </div>
+
+    <div *ngIf="isLoading" class="loading">
+      Yükleniyor...
     </div>
   `,
   styles: [`
@@ -323,6 +331,21 @@ import { CommonModule } from '@angular/common';
         padding: 2rem 20px;
       }
     }
+
+    .error-alert {
+      background-color: #fee2e2;
+      color: #dc2626;
+      padding: 1rem;
+      border-radius: 8px;
+      margin: 1rem;
+      text-align: center;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 2rem;
+      color: #666;
+    }
   `],
   standalone: true,
   imports: [CommonModule]
@@ -330,6 +353,7 @@ import { CommonModule } from '@angular/common';
 export class BlogDetailComponent implements OnInit {
   blog?: Blog;
   isLoading = false;
+  errorMessage = '';
 
   constructor(
     private route: ActivatedRoute,
@@ -339,27 +363,46 @@ export class BlogDetailComponent implements OnInit {
 
   async ngOnInit() {
     this.isLoading = true;
+    this.errorMessage = '';
+
     try {
       const id = this.route.snapshot.paramMap.get('id');
-      if (id) {
-        // Blog detayını al
-        const blog = await this.blogService.getBlogById(id);
-        this.blog = blog;
+      if (!id) {
+        throw new Error('Blog ID bulunamadı');
+      }
 
-        // Görüntülenme sayısını artır
-        await this.blogService.incrementViews(id);
+      // Blog detayını al
+      const blog = await this.blogService.getBlogById(id);
+      this.blog = blog;
 
-        // Okuma geçmişine ekle
-        const user = await this.auth.getCurrentUser();
-        if (user) {
-          const { error } = await this.blogService.addToReadingHistory(user.id, id);
-          if (error) {
-            console.error('Okuma geçmişi eklenirken hata:', error);
+      // Görüntülenme sayısını artır
+      await this.blogService.incrementViews(id);
+
+      // Kullanıcı giriş yapmışsa okuma geçmişine ekle
+      const user = await this.auth.getCurrentUser();
+      if (user) {
+        console.log('Blog okuma geçmişine ekleniyor...', {
+          userId: user.id,
+          blogId: id
+        });
+
+        try {
+          const result = await this.blogService.addToReadingHistory(user.id, id);
+          console.log('Blog okuma geçmişine ekleme sonucu:', result);
+          
+          if (result.error) {
+            console.error('Okuma geçmişi hatası:', result.error);
+          } else {
+            console.log('Blog başarıyla okuma geçmişine eklendi');
           }
+        } catch (error) {
+          console.error('Okuma geçmişi ekleme hatası:', error);
         }
       }
-    } catch (error) {
+
+    } catch (error: any) {
       console.error('Blog detay hatası:', error);
+      this.errorMessage = error.message || 'Blog yüklenirken bir hata oluştu';
     } finally {
       this.isLoading = false;
     }

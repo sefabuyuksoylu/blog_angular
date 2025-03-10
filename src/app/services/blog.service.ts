@@ -117,28 +117,92 @@ export class BlogService {
   }
 
   async addToReadingHistory(userId: string, blogId: string) {
+    console.log('addToReadingHistory çağrıldı:', { userId, blogId });
+
+    if (!userId || !blogId) {
+      console.error('Geçersiz userId veya blogId');
+      return { data: null, error: 'Geçersiz userId veya blogId' };
+    }
+
     try {
-      const { data, error } = await this.supabase.client
-        .from('reading_history')
-        .upsert({
-          user_id: userId,
-          blog_id: blogId,
-          read_at: new Date().toISOString()
-        }, {
-          onConflict: 'user_id,blog_id'
-        })
-        .select()
+      const now = new Date().toISOString();
+      
+      // Blog'un var olduğunu kontrol et
+      const { data: blog, error: blogError } = await this.supabase.client
+        .from('blogs')
+        .select('id')
+        .eq('id', blogId)
         .single();
 
-      if (error) {
-        console.error('Okuma geçmişi ekleme hatası:', error);
-        return { data: null, error };
+      if (blogError || !blog) {
+        console.error('Blog bulunamadı:', blogError);
+        return { data: null, error: 'Blog bulunamadı' };
       }
 
-      // Blog görüntülenme sayısını artır
-      await this.incrementViews(blogId);
+      // Kullanıcının var olduğunu kontrol et
+      const { data: user, error: userError } = await this.supabase.client
+        .from('profiles')
+        .select('id')
+        .eq('id', userId)
+        .single();
 
-      return { data, error: null };
+      if (userError || !user) {
+        console.error('Kullanıcı bulunamadı:', userError);
+        return { data: null, error: 'Kullanıcı bulunamadı' };
+      }
+
+      // Mevcut kaydı kontrol et
+      const { data: existingRecord, error: checkError } = await this.supabase.client
+        .from('reading_history')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('blog_id', blogId)
+        .maybeSingle();
+
+      if (checkError) {
+        console.error('Mevcut kayıt kontrolünde hata:', checkError);
+        return { data: null, error: checkError };
+      }
+
+      if (existingRecord) {
+        // Varsa güncelle
+        const { data: updateData, error: updateError } = await this.supabase.client
+          .from('reading_history')
+          .update({ read_at: now })
+          .eq('user_id', userId)
+          .eq('blog_id', blogId)
+          .select()
+          .single();
+
+        if (updateError) {
+          console.error('Güncelleme hatası:', updateError);
+          return { data: null, error: updateError };
+        }
+
+        console.log('Okuma geçmişi güncellendi:', updateData);
+        return { data: updateData, error: null };
+      } else {
+        // Yoksa yeni kayıt ekle
+        const { data: insertData, error: insertError } = await this.supabase.client
+          .from('reading_history')
+          .insert([
+            {
+              user_id: userId,
+              blog_id: blogId,
+              read_at: now
+            }
+          ])
+          .select()
+          .single();
+
+        if (insertError) {
+          console.error('Ekleme hatası:', insertError);
+          return { data: null, error: insertError };
+        }
+
+        console.log('Okuma geçmişine eklendi:', insertData);
+        return { data: insertData, error: null };
+      }
     } catch (error) {
       console.error('Okuma geçmişi ekleme hatası:', error);
       return { data: null, error };
@@ -237,6 +301,13 @@ export class BlogService {
   }
 
   async getUserReadPosts(userId: string) {
+    console.log('getUserReadPosts çağrıldı, userId:', userId);
+
+    if (!userId) {
+      console.error('Geçersiz userId');
+      return { data: null, error: 'Geçersiz userId' };
+    }
+
     try {
       const { data, error } = await this.supabase.client
         .from('reading_history')
@@ -251,8 +322,18 @@ export class BlogService {
         .eq('user_id', userId)
         .order('read_at', { ascending: false });
 
-      if (error) throw error;
-      return { data, error: null };
+      console.log('Okuma geçmişi sorgu sonucu:', { data, error });
+
+      if (error) {
+        console.error('Okuma geçmişi sorgulama hatası:', error);
+        return { data: null, error };
+      }
+
+      // Null olan blog kayıtlarını filtrele
+      const validData = data?.filter(item => item.blogs !== null) || [];
+      console.log('Filtrelenmiş okuma geçmişi:', validData);
+
+      return { data: validData, error: null };
     } catch (error) {
       console.error('Okuma geçmişi alma hatası:', error);
       return { data: null, error };
